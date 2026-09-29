@@ -50,7 +50,7 @@ def load_phoenix_account(info=None):
     return(filter_data(data, info))
 
 @login_required
-def get_historical_portfolio(interval=None, span='week', bounds='regular',info=None):
+def get_historical_portfolio(interval=None, span='week', bounds='regular', info=None, account_number=None):
     interval_check = ['5minute', '10minute', 'hour', 'day', 'week']
     span_check = ['day', 'week', 'month', '3month', 'year', '5year', 'all']
     bounds_check = ['extended', 'regular', 'trading']
@@ -72,7 +72,7 @@ def get_historical_portfolio(interval=None, span='week', bounds='regular',info=N
         print('ERROR: extended and trading bounds can only be used with a span of "day"', file=get_output())
         return([None])
 
-    account = load_account_profile(info='account_number')
+    account = account_number or load_account_profile(info='account_number')
     url = portfolis_historicals_url(account)
     payload = {
         'interval': interval,
@@ -153,44 +153,31 @@ def get_open_stock_positions(account_number=None, info=None):
 
 
 @login_required
-def get_dividends(info=None):
-    """Returns a list of dividend trasactions that include information such as the percentage rate,
-    amount, shares of held stock, and date paid.
+def get_dividends(info=None, account_number=None):
+    """Returns a list of dividend transactions for the selected account.
 
     :param info: Will filter the results to get a specific value.
     :type info: Optional[str]
-    :returns: [list] Returns a list of dictionaries of key/value pairs for each divident payment. If info parameter is provided, \
-    a list of strings is returned where the strings are the value of the key that matches info.
-    :Dictionary Keys: * id
-                      * url
-                      * account
-                      * instrument
-                      * amount
-                      * rate
-                      * position
-                      * withholding
-                      * record_date
-                      * payable_date
-                      * paid_at
-                      * state
-                      * nra_withholding
-                      * drip_enabled
-
+    :param account_number: The Robinhood account number to scope the request to.
+    :type account_number: Optional[str]
+    :returns: [list] Returns a list of dictionaries of key/value pairs for each dividend payment.
     """
-    url = dividends_url()
+    url = dividends_url(account_number=account_number)
     data = request_get(url, 'pagination')
 
     return(filter_data(data, info))
 
 
 @login_required
-def get_total_dividends():
+def get_total_dividends(account_number=None):
     """Returns a float number representing the total amount of dividends paid to the account.
 
+    :param account_number: The Robinhood account number to scope the request to.
+    :type account_number: Optional[str]
     :returns: Total dollar amount of dividends paid to the account as a 2 precision float.
 
     """
-    url = dividends_url()
+    url = dividends_url(account_number=account_number)
     data = request_get(url, 'pagination')
 
     dividend_total = 0
@@ -514,16 +501,17 @@ def get_referrals(info=None):
 
 
 @login_required
-def get_day_trades(info=None):
+def get_day_trades(info=None, account_number=None):
     """Returns recent day trades.
 
     :param info: Will filter the results to get a specific value.
     :type info: Optional[str]
-    :returns: Returns a list of dictionaries of key/value pairs for each day trade. If info parameter is provided, \
-    a list of strings is returned where the strings are the value of the key that matches info.
+    :param account_number: The Robinhood account number to scope the request to.
+    :type account_number: Optional[str]
+    :returns: Returns a list of dictionaries of key/value pairs for each day trade.
 
     """
-    account = load_account_profile(info='account_number')
+    account = account_number or load_account_profile(info='account_number')
     url = daytrades_url(account)
     data = request_get(url, 'regular')
     return(filter_data(data, info))
@@ -749,23 +737,25 @@ def delete_symbols_from_watchlist(inputSymbols, name="My First List"):
 
 
 @login_required
-def build_holdings(with_dividends=False):
+def build_holdings(with_dividends=False, account_number=None):
     """Builds a dictionary of important information regarding the stocks and positions owned by the user.
 
-    :param with_dividends: True if you want to include divident information.
+    :param with_dividends: True if you want to include dividend information.
     :type with_dividends: bool
+    :param account_number: The Robinhood account number to scope the holdings to.
+    :type account_number: Optional[str]
     :returns: Returns a dictionary where the keys are the stock tickers and the value is another dictionary \
     that has the stock price, quantity held, equity, percent change, equity change, type, name, id, pe ratio, \
     percentage of portfolio, and average buy price.
 
     """
-    positions_data = get_open_stock_positions()
-    portfolios_data = load_portfolio_profile()
-    accounts_data = load_account_profile()
+    positions_data = get_open_stock_positions(account_number=account_number)
+    portfolios_data = load_portfolio_profile(account_number=account_number)
+    accounts_data = load_account_profile(account_number=account_number)
 
     # user wants dividend information in their holdings
     if with_dividends is True:
-        dividend_data = get_dividends()
+        dividend_data = get_dividends(account_number=account_number)
 
     if not positions_data or not portfolios_data or not accounts_data:
         return({})
@@ -841,7 +831,7 @@ def build_holdings(with_dividends=False):
 def build_user_profile(account_number=None):
     """Builds a dictionary of important information regarding the user account.
 
-    :returns: Returns a dictionary that has total equity, extended hours equity, cash, and divendend total.
+    :returns: Returns a dictionary that has total equity, extended hours equity, cash, and dividend total.
 
     """
     user = {}
@@ -857,6 +847,6 @@ def build_user_profile(account_number=None):
         cash = "{0:.2f}".format(float(accounts_data['portfolio_cash'])) # float(accounts_data['cash']) + uncleared_deposits 
         user['cash'] = cash
 
-    user['dividend_total'] = get_total_dividends()
+    user['dividend_total'] = get_total_dividends(account_number=account_number)
 
     return(user)

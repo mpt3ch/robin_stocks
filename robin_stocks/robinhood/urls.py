@@ -33,7 +33,7 @@ def portfolio_profile_url(account_number=None):
     if account_number:
         return('https://api.robinhood.com/portfolios/'+account_number)
     else:
-        return('https://api.robinhood.com/portfolios/')
+        return('https://api.robinhood.com/portfolios/?default_to_all_accounts=true')
 
 
 def security_profile_url():
@@ -114,8 +114,11 @@ def daytrades_url(account):
     return('https://api.robinhood.com/accounts/{0}/recent_day_trades/'.format(account))
 
 
-def dividends_url():
-    return('https://api.robinhood.com/dividends/')
+def dividends_url(account_number=None):
+    url = 'https://api.robinhood.com/dividends/'
+    if account_number:
+        url += '?account_number={0}'.format(account_number)
+    return url
 
 
 def documents_url():
